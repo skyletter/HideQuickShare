@@ -105,6 +105,11 @@ LSPosed 里关掉模块 → 重启；或直接卸载 APK。都是内存 hook，�
 - [CleanShare](https://github.com/hxreborn/CleanShare)：AOSP `IntentResolver` 的分享面板清理（含 Quick Share 过滤），OEM 面板不适用。
 - [HyperSelect](https://github.com/Yilink1/HyperSelect)：HyperOS 的分享 / 打开方式定制，同样在 `IPackageManagerBase` 层做过滤，可作为 API 102 写法的参考。
 
+## 更新日志
+
+- **v2.2**：新增 `resolveIntent` 通道（覆盖只取单个最佳匹配的调用方）；命中日志做节流（前 3 次 + 每 100 次）。
+- **v2.1**：首个可用版本，在 system_server 的 PackageManager 查询层过滤。
+
 ## License
 
 MIT

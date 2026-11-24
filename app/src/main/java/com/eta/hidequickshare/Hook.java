@@ -43,6 +43,10 @@ public class Hook implements IXposedHookLoadPackage {
     private static final String GMS_PKG = "com.google.android.gms";
     private static final String NEARBY_TOKEN = ".nearby.sharing.";
 
+    /** 命中日志节流：前 3 次全记，之后每 100 次记一条 */
+    private static final java.util.concurrent.atomic.AtomicInteger sHits =
+            new java.util.concurrent.atomic.AtomicInteger();
+
     private static boolean sInstalled = false;
 
     @Override
@@ -60,8 +64,47 @@ public class Hook implements IXposedHookLoadPackage {
         hookQueryMethods(lp.classLoader, "com.android.server.pm.ComputerEngine");
         hookQueryMethods(lp.classLoader, "com.android.server.pm.PackageManagerInternalBase");
         hookPmsBinder(lp.classLoader);
+        hookResolveIntent(lp.classLoader);
         hookAppPm(lp.classLoader);
         hookResolver(lp.classLoader);
+    }
+
+    /** resolveIntent：某些调用方只取单个最佳匹配，不经过列表查询 */
+    private void hookResolveIntent(ClassLoader cl) {
+        Class<?> c = XposedHelpers.findClassIfExists(
+                "com.android.server.pm.IPackageManagerBase", cl);
+        if (c == null) {
+            return;
+        }
+        int n = 0;
+        for (Method m : c.getDeclaredMethods()) {
+            if (!"resolveIntent".equals(m.getName())
+                    || !ResolveInfo.class.isAssignableFrom(m.getReturnType())) {
+                continue;
+            }
+            try {
+                XposedBridge.hookMethod(m, new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        try {
+                            if (!isShareIntent(param.args.length > 0 ? param.args[0] : null)) {
+                                return;
+                            }
+                            if (isQuickShare(param.getResult())) {
+                                param.setResult(null);
+                                countHit("resolveIntent 屏蔽");
+                            }
+                        } catch (Throwable t) {
+                            log("resolveIntent 过滤异常: " + t);
+                        }
+                    }
+                });
+                n++;
+            } catch (Throwable t) {
+                log("hook resolveIntent 失败: " + t);
+            }
+        }
+        log("resolveIntent 挂上 " + n + " 个");
     }
 
     // ------------------------------------------------ system_server 查询引擎
@@ -147,7 +190,7 @@ public class Hook implements IXposedHookLoadPackage {
                 }
                 Object newSlice = XposedHelpers.newInstance(slice.getClass(), filtered);
                 param.setResult(newSlice);
-                log("binder(" + mName + ") 已重打包候选列表");
+                countHit("binder(" + mName + ") 重打包");
             } catch (Throwable t) {
                 log("binder 过滤异常: " + t);
             }
@@ -224,7 +267,7 @@ public class Hook implements IXposedHookLoadPackage {
                 List<?> filtered = filterCopy((List<?>) param.getResult());
                 if (filtered != null) {
                     param.setResult(filtered);
-                    log(mName + " 移除快速分享");
+                    countHit(mName);
                 }
             } catch (Throwable t) {
                 log(mName + " 过滤异常: " + t);
@@ -337,6 +380,14 @@ public class Hook implements IXposedHookLoadPackage {
         try {
             Log.i(TAG, msg);
         } catch (Throwable ignored) {
+        }
+    }
+
+    /** 命中日志节流，避免每次打开面板刷屏 */
+    private static void countHit(String what) {
+        int n = sHits.incrementAndGet();
+        if (n <= 3 || n % 100 == 0) {
+            log(what + " 移除快速分享（累计 " + n + "）");
         }
     }
 }
