@@ -1,0 +1,20 @@
+# 构建产物
+.gradle/
+build/
+app/build/
+*.apk
+*.idsig
+*.aab
+
+# 本地环境
+local.properties
+.idea/
+*.iml
+
+# 签名文件
+*.jks
+*.keystore
+
+# 系统
+.DS_Store
+Thumbs.db

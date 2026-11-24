@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:label="隐藏快速分享"
+        android:hasCode="true">
+
+        <!-- LSPosed 模块声明，四项缺一不可 -->
+        <meta-data
+            android:name="xposedmodule"
+            android:value="true" />
+        <meta-data
+            android:name="xposeddescription"
+            android:value="从系统分享面板移除 Google 快速分享(Quick Share)入口，不影响 GMS 其他功能。" />
+        <meta-data
+            android:name="xposedminversion"
+            android:value="82" />
+        <meta-data
+            android:name="xposedscope"
+            android:resource="@array/xposedscope" />
+    </application>
+
+</manifest>
